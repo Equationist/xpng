@@ -9,11 +9,14 @@ The nonlinear formula for allowable error at each compression and noise level wa
 The program ended up being similar to [lossypng](https://github.com/foobaz/lossypng), but the adaptive quantization used in xpng makes it better at low compression levels (achieving compression ratios of 5-10 compared to raw without significant visual artifacts, as shown in the sample images below). This minimal-artifact compression ratio of 5-10 for XPNG compares with roughly 15-20 for JPEG. However, XPNG performs much better than JPEG on images containing a mixture of photography and text or line art.
 
 ## Usage
-`xpng inputfile.png outputfile.png compressionlevel`
+`xpng inputfile.png outputfile.png compressionlevel` (compression level is a number from 0-40, with a typical value of 6)
+
 Apply a png optimizer afterwards for full compression.
 
 ## Compiling
-Requires libpng and zlib. Compile with `gcc main.c -o xpng -lpng*`
+Requires libpng and zlib.
+
+Compile with `gcc main.c -o xpng -lpng`
 
 ## Sample Images
 Here is a diverse suite of test images fromm the [Kodak Image Suite](http://r0k.us/graphics/kodak/). Both original and compressed versions were run through PNGGauntlet for an optimized apples to apples comparison. A comprssion level of 6 was used. The compressed image follows the original.
