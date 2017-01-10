@@ -10,7 +10,7 @@
 #include <math.h>
 #include <stdint.h>
 
-#define BLOCKSIZE 3
+#define BLOCKSIZE 3 /* Size of block for noise calculation */
 
 static int32_t h;
 static int32_t w;
@@ -95,7 +95,7 @@ png_byte paeth(int32_t i, int32_t j, int c, png_bytep data)
     return base;
 }
 
-/* Calculates noisiness around a certain location - used for adaptive quantization */
+/* Calculates noisiness - used for adaptive quantization */
 png_byte calc_noise(int32_t i, int32_t j, int32_t c, png_bytep data)
 {
     int32_t N = 0;
@@ -139,11 +139,10 @@ int main(int argc, const char **argv)
         exit (1);
     }
     
-    png_bytep buffer;
-    png_bytep buffer2;
-    png_bytep data;
-    png_bytep diff;
-    png_bytep noise;
+    png_bytep buffer; /* Buffer for original image */
+    png_bytep buffer2; /* Output image buffer */
+    png_bytep diff; /* Residuals from predictor */
+    png_bytep noise; /* Local noisiness */
 
     image.format = PNG_FORMAT_RGB;
 
@@ -153,7 +152,7 @@ int main(int argc, const char **argv)
     noise = malloc(PNG_IMAGE_SIZE(image));
     
 
-    if (buffer == NULL || buffer2 == NULL)
+    if (buffer == NULL || buffer2 == NULL || diff == NULL || noise == NULL)
     {
         fprintf(stderr, "xpng: error: insufficient memory\n");
         exit(1);
@@ -173,6 +172,7 @@ int main(int argc, const char **argv)
     h = image.height;
     w = image.width;
 
+    /* Calculate local noisiness */
     for (int32_t i = 0; i < h; i++)
     {
         for (int32_t j = 0; j < w; j++)
@@ -184,6 +184,7 @@ int main(int argc, const char **argv)
         }
     }
 
+    /* Specify the preference levels of each quantization */
     uint64_t freq[256] = {};
     for (uint16_t jumpsize = 1; jumpsize <= 128; jumpsize*=2)
     {
@@ -192,6 +193,8 @@ int main(int argc, const char **argv)
             freq[(uint8_t)i] = jumpsize;
         }
     }
+    
+    /* Go through image and adaptively quantize for noise masking */
     for (int32_t i = 0; i < h; i++)
     {
         int32_t refdist = 1;
@@ -199,8 +202,10 @@ int main(int argc, const char **argv)
         {
             for (int32_t c = 0; c < 3; c++)
             {
-                png_byte target;
-                png_byte base;
+                png_byte target; /* Target value */
+                png_byte base; /* Output from predictor */
+                
+                /* Left predictor for first row, avg. for others */
                 if (i == 0 && j > 0)
                 {
                     target = *pix(i,j,c,buffer);
@@ -212,14 +217,17 @@ int main(int argc, const char **argv)
                     base = avg(i,j,c,buffer2);
                 }
 
+                /* Calculate tolerance using comp. level and local noise */
                 uint8_t delta = clevel
-                              +(uint16_t) *pix(i,j,c,noise)*clevel/(10+clevel);
+                              + (uint16_t) *pix(i,j,c,noise)*clevel/(10+clevel);
 
+                /* Calculate interval based on tolerance */
                 png_byte ltarget = 0;
                 png_byte rtarget = 255;
                 if (target > delta) ltarget = target-delta;
                 if (255-target > delta) rtarget = target+delta;
 
+                /* Find best quantization within allowable tolerance */
                 *pix(i,j,c,buffer2) = target;
                 png_byte approx = target;
                 uint64_t f = 0;
@@ -238,12 +246,12 @@ int main(int argc, const char **argv)
                 /*freq[*pix(i,j,c,diff)]++;*/
                 *pix(i,j,c,buffer2) = approx;
 
+                /* Use recent value for runlength encoding if possible */
                 if (err(target,base+*(pix(i,j,c,diff)-refdist))
                         < delta)
                 {
                     *pix(i,j,c,diff) = *(pix(i,j,c,diff)-refdist);
-                    *pix(i,j,c,buffer2) = base 
-                                        + *pix(i,j,c,diff);
+                    *pix(i,j,c,buffer2) = base + *pix(i,j,c,diff);
                     continue;
                 }
                 for (size_t rd=1; rd<=j*3+c && rd<=4;rd++)
@@ -253,8 +261,7 @@ int main(int argc, const char **argv)
                     {
                         refdist = rd;
                         *pix(i,j,c,diff) = *(pix(i,j,c,diff)-rd);
-                        *pix(i,j,c,buffer2) = base 
-                                            + *pix(i,j,c,diff);
+                        *pix(i,j,c,buffer2) = base + *pix(i,j,c,diff);
                         break;
                     }
                 }
@@ -269,5 +276,3 @@ int main(int argc, const char **argv)
     }
     exit(0);
 }
-
-    
