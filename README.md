@@ -1,8 +1,24 @@
 # XPNG
-Lossy PNG compression with adaptive quantization
+Program to lossily compress PNG images using adaptive quantization.
 
-# Sample Images
-Here is a diverse suite of test images fromm the [Kodak Image Suite](http://r0k.us/graphics/kodak/). Both original and compressed versions were run through PNGGauntlet for an optimized apples to apples comparison. The compressed image follows the original.
+## About
+I've had this idea for a few years but didn't get around to implementing it till Fall of 2016.
+
+This code preprocesses PNG images by making small changes to the images to make them easier to compress. The program uses adaptive quantization based on the local noisiness of the source image, taking advantage of noise masking. It is designed for the "Average" predictor in PNG - various predictors were tried, but "Average" worked out best as it smeared out any effects of quantization. The program quantizes to the highest power of 2 within the allowable noise margin, unless a recent value was used that also results in output within the allowable noise margin (to make use of DEFLATE's runlength encoding).
+
+The nonlinear formula for allowable error at each compression and noise level was chosen based on careful trial and error and hand tuning for optimal visual perceptual effect.
+
+This program ended up being similar to [lossypng](https://github.com/foobaz/lossypng), but the adaptive quantization used in xpng makes it better at low compression levels (achieving compression ratios of 5-10 compared to raw without significant visual artifacts, as shown in the sample images below). This minimal-artifact compression ratio of 5-10 for XPNG compares with roughly 15-20 for JPEG. However, XPNG performs much better than JPEG on images containing a mixture of photography and text or line art.
+
+## Usage
+`xpng inputfile.png outputfile.png compressionlevel`
+Apply a png optimizer afterwards for full compression.
+
+## Compiling
+Requires libpng and zlib. Compile with `gcc main.c -o xpng -lpng*`
+
+## Sample Images
+Here is a diverse suite of test images fromm the [Kodak Image Suite](http://r0k.us/graphics/kodak/). Both original and compressed versions were run through PNGGauntlet for an optimized apples to apples comparison. A comprssion level of 6 was used. The compressed image follows the original.
 
 ### Original: 678 KB - Compressed: 187 KB (72% Compression)
 ![kodim01](https://cloud.githubusercontent.com/assets/8397050/21791560/6d455276-d698-11e6-8101-8533ebcf7249.png)
